@@ -41,7 +41,9 @@ const TxExplorer = () => {
     console.log('Processing:', tx)
     const txData = {
       tx: tx,
-      isSegwit: true, // TODO: how to determine if it's a segwit transaction?
+      segwit: true, // TODO: how to determine if it's a segwit transaction?
+      confirmed: tx.status.confirmed,
+      timestamp: Date.now(),
     }
     if (txData.isSegwit) {
       txData.satPerVByte = tx.fee / (tx.weight / 4)  // Source: https://en.bitcoin.it/wiki/Satoshi_per_byte
@@ -66,9 +68,11 @@ const TxExplorer = () => {
 const TxInfo = ({ txData }) => (
   <div id="tx_data">
     <ul>
-      <li>Segwit: {txData.isSegwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong></li>
+      <li>{txData.confirmed ? 'Confirmed' : 'Unconfirmed'}</li>
+      <li>Segwit: {txData.segwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong></li>
       {txData.satPerByte !== undefined && <li>Sat/Byte: {txData.satPerByte}</li>}
       {txData.satPerVByte !== undefined && <li>Sat/VByte: {txData.satPerVByte}</li>}
+      <li>Last checked: {new Date(txData.timestamp).toString()}</li>
     </ul>
     <p>
       <a href={`https://mempool.space/tx/${txData.tx.txid}`} target="_blank" rel="noopener noreferrer">compare</a>
