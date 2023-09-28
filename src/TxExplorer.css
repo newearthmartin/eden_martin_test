@@ -1,0 +1,9 @@
+#tx_input .status_message {
+    font-style: italic;
+}
+
+#tx_data pre {
+    background: #192048;
+    color: #ffeb3b;
+    padding: 1em;
+}
