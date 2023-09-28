@@ -16,8 +16,8 @@ const TxExplorer = () => {
     const URL = `https://mempool.space/api/tx/${txid}`
     setLoading(true)
     setStatusMessage('Loading...')
-
     console.log(`Fetching ${URL}`)
+
     fetch(URL)
       .then(async response => {
         if (response.ok) {
@@ -63,18 +63,18 @@ const TxExplorer = () => {
   </>
 }
 
-const TxInfo = ({ txData }) => {
-  return <div id="tx_data">
-    <p>
-      Segwit: {txData.isSegwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong><br />
-      {txData.satPerByte && <>Sat/Byte: {txData.satPerByte}<br /></>}
-      {txData.satPerVByte && <>Sat/VByte: {txData.satPerVByte}<br /></>}
-    </p>
+const TxInfo = ({ txData }) => (
+  <div id="tx_data">
+    <ul>
+      <li>Segwit: {txData.isSegwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong></li>
+      {txData.satPerByte !== undefined && <li>Sat/Byte: {txData.satPerByte}</li>}
+      {txData.satPerVByte !== undefined && <li>Sat/VByte: {txData.satPerVByte}</li>}
+    </ul>
     <p>
       <a href={`https://mempool.space/tx/${txData.tx.txid}`} target="_blank" rel="noopener noreferrer">compare</a>
     </p>
     <pre>{JSON.stringify(txData.tx, null, 2)}</pre>
   </div>
-}
+)
 
 export default TxExplorer
