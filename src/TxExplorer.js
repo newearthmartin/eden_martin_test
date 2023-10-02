@@ -42,7 +42,7 @@ const TxExplorer = () => {
     const txData = {
       tx: tx,
       segwit: true, // TODO: how to determine if it's a segwit transaction?
-      confirmed: tx.status.confirmed,
+      confirmed: tx.status.confirmed, // TODO: if confirmed, how to retrieve latest block to count confirmations?
       timestamp: Date.now(),
     }
     if (txData.isSegwit) {
