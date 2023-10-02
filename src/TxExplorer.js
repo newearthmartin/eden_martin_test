@@ -101,8 +101,8 @@ const TxExplorer = () => {
 const TxInfo = ({ txData, firebaseId }) => (
   <div id="tx_data">
     <ul>
-      {txData.status != TxStatus.NotFound && <>
-        <li>{txData.status == TxStatus.Confirmed ? 'Confirmed' : 'Unconfirmed'}</li>
+      {txData.status !== TxStatus.NotFound && <>
+        <li>{txData.status === TxStatus.Confirmed ? 'Confirmed' : 'Unconfirmed'}</li>
         <li>Segwit: {txData.segwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong></li>
         {txData.satPerByte !== undefined && <li>Sat/Byte: {txData.satPerByte}</li>}
         {txData.satPerVByte !== undefined && <li>Sat/VByte: {txData.satPerVByte}</li>}
