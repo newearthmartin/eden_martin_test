@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import './TxExplorer.css'
+import { collection, query, where, addDoc, setDoc, getDocs } from "firebase/firestore"
+import { db } from './firebase'
 
 const TxStatus = {  // TODO: use typescript enum
   NotFound: 'N',
@@ -13,6 +15,7 @@ const TxExplorer = () => {
   const [txData, setTxData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState(null)
+  const [firebaseId, setFirebaseId] = useState(null)
 
   const getStatus = () => {
     setTxData(null)
@@ -22,11 +25,11 @@ const TxExplorer = () => {
     const URL = `https://mempool.space/api/tx/${txid}`
     setLoading(true)
     setStatusMessage('Loading...')
+    setFirebaseId(null)
     console.log(`Fetching ${URL}`)
 
     const txData = {  // TODO: use typescript
       txid: txid,
-      tx: null,
       status: TxStatus.NotFound,
       timestamp: Date.now(),
     }
@@ -36,16 +39,16 @@ const TxExplorer = () => {
         if (response.ok) {
           return response.json()
         } else if (response.status === 404) {
-          storeTx(txData);
+          await storeTx(txData);
           setTxData(txData);
           throw new Error('Transaction not found')
         } else {
           throw new Error(await response.text())
         }
       })
-      .then(data => {
+      .then(async data => {
         processTx(data, txData)
-        storeTx(txData);
+        await storeTx(txData);
         setTxData(txData)
         setStatusMessage(null)
       })
@@ -55,32 +58,47 @@ const TxExplorer = () => {
 
   const processTx = (tx, txData) => {
     console.log('Processing:', tx)
-    txData.tx = tx;
-    txData.segwit = true;  // TODO: how to determine if it's a segwit transaction?
-    txData.status = tx.status.confirmed ? TxStatus.Confirmed : TxStatus.Unconfirmed; // TODO: if confirmed, how to retrieve latest block to count confirmations?
-
-    if (txData.isSegwit) {
+    txData.tx = tx
+    txData.segwit = true  // TODO: how to determine if it's a segwit transaction?
+    txData.status = tx.status.confirmed ? TxStatus.Confirmed : TxStatus.Unconfirmed // TODO: if confirmed, how to retrieve latest block to count confirmations?
+    if (txData.segwit) {
       txData.satPerVByte = tx.fee / (tx.weight / 4)  // Source: https://en.bitcoin.it/wiki/Satoshi_per_byte
     } else {
       txData.satPerByte = tx.fee / tx.size
     }
-    console.log('Processed:', txData)
     return txData
+  }
+
+  const storeTx = async (txData) => {
+    console.log('Storing:', txData)
+    const txRef = collection(db, 'transactions')
+    await getDocs(query(txRef, where('txid', '==', txData.txid)))
+      .then(async querySnapshot => {
+        let docRef;
+        if (querySnapshot.docs.length > 0) {
+          docRef = querySnapshot.docs[0].ref;
+          await setDoc(docRef, txData);
+        } else {
+          docRef = await addDoc(txRef, txData)
+        }
+        console.log('Firebase ID:', docRef.id)
+        setFirebaseId(docRef.id)
+      })
   }
 
   return <>
     <div id="tx_input">
       <form onSubmit={getStatus}>
-        <input type="text" value={txid} size="68" onChange={e => setTxid(e.target.value.trim())} />&nbsp;
+        <input type="text" value={txid} size="72" onChange={e => setTxid(e.target.value.trim())} />&nbsp;
         <button onClick={getStatus} disabled={loading ? true : null}>get status</button>
       </form>
       {statusMessage && <p className="status_message">{statusMessage}</p>}
     </div>
-    {txData && <TxInfo txData={txData} />}
+    {txData && <TxInfo txData={txData} firebaseId={firebaseId} />}
   </>
 }
 
-const TxInfo = ({ txData }) => (
+const TxInfo = ({ txData, firebaseId }) => (
   <div id="tx_data">
     <ul>
       {txData.status != TxStatus.NotFound && <>
@@ -93,14 +111,10 @@ const TxInfo = ({ txData }) => (
     </ul>
     <p>
       <a href={`https://mempool.space/tx/${txData.txid}`} target="_blank" rel="noopener noreferrer">compare</a>
+      {firebaseId && <> - Firebase ID: {firebaseId}</>}
     </p>
     {txData.tx && <pre>{JSON.stringify(txData.tx, null, 2)}</pre>}
   </div>
 )
-
-const storeTx = (txData) => {
-  console.log('TODO Storing in firestore', txData)
-  // TODO: implement
-}
 
 export default TxExplorer
