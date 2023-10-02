@@ -1,5 +1,11 @@
-import { useState } from 'react';
-import './TxExplorer.css';
+import { useState } from 'react'
+import './TxExplorer.css'
+
+const TxStatus = {  // TODO: use typescript enum
+  NotFound: 'N',
+  Unconfirmed: 'U',
+  Confirmed: 'C'
+}
 
 const TxExplorer = () => {
   // const [txid, setTxid] = useState('F4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16')
@@ -18,18 +24,28 @@ const TxExplorer = () => {
     setStatusMessage('Loading...')
     console.log(`Fetching ${URL}`)
 
+    const txData = {  // TODO: use typescript
+      txid: txid,
+      tx: null,
+      status: TxStatus.NotFound,
+      timestamp: Date.now(),
+    }
+
     fetch(URL)
       .then(async response => {
         if (response.ok) {
           return response.json()
         } else if (response.status === 404) {
+          storeTx(txData);
+          setTxData(txData);
           throw new Error('Transaction not found')
         } else {
           throw new Error(await response.text())
         }
       })
       .then(data => {
-        const txData = processTx(data)
+        processTx(data, txData)
+        storeTx(txData);
         setTxData(txData)
         setStatusMessage(null)
       })
@@ -37,28 +53,27 @@ const TxExplorer = () => {
       .finally(() => { setLoading(false) })
   }
 
-  const processTx = (tx) => {
+  const processTx = (tx, txData) => {
     console.log('Processing:', tx)
-    const txData = {
-      tx: tx,
-      segwit: true, // TODO: how to determine if it's a segwit transaction?
-      confirmed: tx.status.confirmed, // TODO: if confirmed, how to retrieve latest block to count confirmations?
-      timestamp: Date.now(),
-    }
+    txData.tx = tx;
+    txData.segwit = true;  // TODO: how to determine if it's a segwit transaction?
+    txData.status = tx.status.confirmed ? TxStatus.Confirmed : TxStatus.Unconfirmed; // TODO: if confirmed, how to retrieve latest block to count confirmations?
+
     if (txData.isSegwit) {
       txData.satPerVByte = tx.fee / (tx.weight / 4)  // Source: https://en.bitcoin.it/wiki/Satoshi_per_byte
     } else {
       txData.satPerByte = tx.fee / tx.size
     }
-    // TODO: store in Firebase
     console.log('Processed:', txData)
     return txData
   }
 
   return <>
     <div id="tx_input">
-      <input type="text" value={txid} size="68" onChange={e => setTxid(e.target.value.trim())} />&nbsp;
-      <button onClick={getStatus} disabled={loading ? true : null}>get status</button>
+      <form onSubmit={getStatus}>
+        <input type="text" value={txid} size="68" onChange={e => setTxid(e.target.value.trim())} />&nbsp;
+        <button onClick={getStatus} disabled={loading ? true : null}>get status</button>
+      </form>
       {statusMessage && <p className="status_message">{statusMessage}</p>}
     </div>
     {txData && <TxInfo txData={txData} />}
@@ -68,17 +83,24 @@ const TxExplorer = () => {
 const TxInfo = ({ txData }) => (
   <div id="tx_data">
     <ul>
-      <li>{txData.confirmed ? 'Confirmed' : 'Unconfirmed'}</li>
-      <li>Segwit: {txData.segwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong></li>
-      {txData.satPerByte !== undefined && <li>Sat/Byte: {txData.satPerByte}</li>}
-      {txData.satPerVByte !== undefined && <li>Sat/VByte: {txData.satPerVByte}</li>}
+      {txData.status != TxStatus.NotFound && <>
+        <li>{txData.status == TxStatus.Confirmed ? 'Confirmed' : 'Unconfirmed'}</li>
+        <li>Segwit: {txData.segwit ? 'true' : 'false'} <strong> - Check for Segwit is hardcoded as true</strong></li>
+        {txData.satPerByte !== undefined && <li>Sat/Byte: {txData.satPerByte}</li>}
+        {txData.satPerVByte !== undefined && <li>Sat/VByte: {txData.satPerVByte}</li>}
+      </>}
       <li>Last checked: {new Date(txData.timestamp).toString()}</li>
     </ul>
     <p>
-      <a href={`https://mempool.space/tx/${txData.tx.txid}`} target="_blank" rel="noopener noreferrer">compare</a>
+      <a href={`https://mempool.space/tx/${txData.txid}`} target="_blank" rel="noopener noreferrer">compare</a>
     </p>
-    <pre>{JSON.stringify(txData.tx, null, 2)}</pre>
+    {txData.tx && <pre>{JSON.stringify(txData.tx, null, 2)}</pre>}
   </div>
 )
+
+const storeTx = (txData) => {
+  console.log('TODO Storing in firestore', txData)
+  // TODO: implement
+}
 
 export default TxExplorer
