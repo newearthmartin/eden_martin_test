@@ -1,21 +1,31 @@
-import { useState } from 'react'
-import './TxExplorer.css'
-import { collection, query, where, addDoc, setDoc, getDocs } from "firebase/firestore"
+import React, { useState } from 'react'
+import { collection, query, where, addDoc, setDoc, getDocs, DocumentReference } from "firebase/firestore"
 import { db } from './firebase'
+import './TxExplorer.css'
 
-const TxStatus = {  // TODO: use typescript enum
-  NotFound: 'N',
-  Unconfirmed: 'U',
-  Confirmed: 'C'
+enum TxStatus {
+  NotFound = 'N',
+  Unconfirmed = 'U',
+  Confirmed = 'C'
+}
+
+type TxData = {
+  txid: string
+  status: TxStatus
+  timestamp: number
+  tx?: any
+  segwit?: boolean
+  satPerByte?: number
+  satPerVByte?: number
 }
 
 const TxExplorer = () => {
   // const [txid, setTxid] = useState('F4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16')
   const [txid, setTxid] = useState('6eeee319402dd7693434f005189085264a88b139964ddede641b384e08220f84')
-  const [txData, setTxData] = useState(null)
+  const [txData, setTxData] = useState<TxData | null>(null)
+  const [firebaseId, setFirebaseId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [statusMessage, setStatusMessage] = useState(null)
-  const [firebaseId, setFirebaseId] = useState(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   const getStatus = () => {
     setTxData(null)
@@ -28,7 +38,7 @@ const TxExplorer = () => {
     setFirebaseId(null)
     console.log(`Fetching ${URL}`)
 
-    const txData = {  // TODO: use typescript
+    const txData: TxData = {
       txid: txid,
       status: TxStatus.NotFound,
       timestamp: Date.now(),
@@ -56,7 +66,7 @@ const TxExplorer = () => {
       .finally(() => { setLoading(false) })
   }
 
-  const processTx = (tx, txData) => {
+  const processTx = (tx: any, txData: TxData) => {
     console.log('Processing:', tx)
     txData.tx = tx
     txData.segwit = true  // TODO: how to determine if it's a segwit transaction?
@@ -66,15 +76,14 @@ const TxExplorer = () => {
     } else {
       txData.satPerByte = tx.fee / tx.size
     }
-    return txData
   }
 
-  const storeTx = async (txData) => {
+  const storeTx = async (txData: TxData) => {
     console.log('Storing:', txData)
     const txRef = collection(db, 'transactions')
     await getDocs(query(txRef, where('txid', '==', txData.txid)))
       .then(async querySnapshot => {
-        let docRef;
+        let docRef: DocumentReference;
         if (querySnapshot.docs.length > 0) {
           docRef = querySnapshot.docs[0].ref;
           await setDoc(docRef, txData);
@@ -89,8 +98,8 @@ const TxExplorer = () => {
   return <>
     <div id="tx_input">
       <form onSubmit={getStatus}>
-        <input type="text" value={txid} size="72" onChange={e => setTxid(e.target.value.trim())} />&nbsp;
-        <button onClick={getStatus} disabled={loading ? true : null}>get status</button>
+        <input type="text" value={txid} size={72} onChange={e => setTxid(e.target.value.trim())} />&nbsp;
+        <button onClick={getStatus} disabled={loading ? true : undefined}>get status</button>
       </form>
       {statusMessage && <p className="status_message">{statusMessage}</p>}
     </div>
